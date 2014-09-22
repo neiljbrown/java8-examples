@@ -1,0 +1,56 @@
+description = 'java8-examples - Code examples for new language features and enhancements in Java (JSE) 8.'
+
+ext {
+  // Cribbed from https://github.com/mindscratch/reactor-offline/blob/master/build.gradle
+  javadocLinks = [
+      "http://docs.oracle.com/javase/8/docs/api/",
+      "http://junit.sourceforge.net/javadoc/",
+      "http://hamcrest.org/JavaHamcrest/javadoc/1.3/"
+  ] as String[]  
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+eclipse.classpath.downloadJavadoc = true // defaults to 'false'
+apply plugin: 'idea'
+
+// Allow use of Java 8 language features, and compile in expectation that target JRE will be Java 8+
+project.ext.javaVersion="8"
+
+jar {
+  baseName = 'java8-examples'
+  version =  '0.0.1-SNAPSHOT'
+}
+
+repositories {
+  mavenCentral()
+}
+
+
+dependencies {
+  // Compile-time dependencies  
+  
+  // Test dependencies
+  testCompile("junit:junit:4.11")
+  testCompile("org.hamcrest:hamcrest-library:1.3")
+  testCompile("ch.qos.logback:logback-classic:1.1.2")    
+
+  // Runtime dependencies  
+}
+
+tasks.withType(JavaCompile) { 
+  // Define minimum version of permitted Java language source, and compile to classes that require a target JRE to support that version
+  sourceCompatibility = "${project.ext.javaVersion}"
+  targetCompatibility = "${project.ext.javaVersion}" 
+}
+
+// Custom task for running javadoc on Java classes in src/test/java
+task javadocTests(type: Javadoc) {
+  source = sourceSets.test.allJava
+  classpath = configurations.testCompile  
+  options.links(project.ext.javadocLinks)  
+}
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '1.12'
+}
