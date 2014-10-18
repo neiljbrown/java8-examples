@@ -274,6 +274,8 @@ public class StreamApiExamplesTest {
   /**
    * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns a
    * stream of all the lines in a Reader.
+   * 
+   * @throws Exception If an unexpected error occurs. 
    */
   @Test
   public void testCreateStreamFromBufferedReader() throws Exception {
