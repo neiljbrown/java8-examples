@@ -20,9 +20,15 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.*;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -34,12 +40,16 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * Examples of using the new <a
- * href="http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html">Streams API</a> in Java 8, and
- * its companion <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html">package of
- * functional interfaces</a> to support processing 'streams' of elements (including e.g. Collections) in a higher-level,
- * declarative ('functional') style, with the benefits (in some cases) of lazy evaluation and parallel (multi-threaded)
- * processing.
+ * Examples of using the new Streams API in Java 8, and its companion <a
+ * href="http://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html">package of functional
+ * interfaces</a> to support processing 'streams'.
+ * <p>
+ * The <a href="http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html">Streams API</a> is a new
+ * concurrency feature which builds on the existing fork-join framework to support parallel processing of data
+ * (utilising multi-core CPUs), whilst abstracting the complexity of the underlying multi-threading logic. A Stream can
+ * be defined as a sequence of data elements from a source which supports performing aggregate (‘bulk’) operations on
+ * the elements, both sequentially and in parallel. The source of a Stream can include Collections, Arrays, and some I/O
+ * classes (e.g. BufferedReader).
  */
 public class StreamApiExamplesTest {
 
@@ -74,15 +84,15 @@ public class StreamApiExamplesTest {
 
     // From J8 onwards, the new Streams API can be used to apply the filter
     filteredStudents = students
-    // Use Collection.stream() to create a java.util.stream.Stream (sequence of elements supporting sequential and
-    // parallel aggregate operations) for operations on this Collection
-    .stream()
-    // Use Stream.filter() to filter the List of Students according to a java.util.function.Predicate, the
-    // test() method of which is implemented as a Lambda expression
-    .filter(s -> s.getDob().getYear() > yearOfBirthFilter)
-    // Accumulate the elements of the stream back into a List
-    // It's only when this terminal operation on the Stream is performed that the processing takes place.
-    .collect(Collectors.toList());
+        // Use Collection.stream() to create a java.util.stream.Stream (sequence of elements supporting sequential and
+        // parallel aggregate operations) for operations on this Collection
+        .stream()
+        // Use Stream.filter() to filter the List of Students according to a java.util.function.Predicate, the
+        // test() method of which is implemented as a Lambda expression
+        .filter(s -> s.getDob().getYear() > yearOfBirthFilter)
+        // Accumulate the elements of the stream back into a List
+        // It's only when this terminal operation on the Stream is performed that the processing takes place.
+        .collect(Collectors.toList());
 
     assertThat(filteredStudents, contains(s2, s3));
   }
@@ -233,6 +243,57 @@ public class StreamApiExamplesTest {
 
     assertThat(optionalInt.isPresent(), is(true));
     assertThat(optionalInt.getAsInt(), is(76));
+  }
+
+  /**
+   * Collections are not the only thing that can be used as the source of streams. The Streams API supports creating a
+   * Stream from a supplied value or list of values aswell, using e.g. {@link Stream#of(Object...)}.
+   */
+  @Test
+  public void testCreateStreamFromSuppliedValues() {
+    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
+
+    Stream<String> stream = Stream.of(phrase[0], phrase[1], phrase[2], phrase[3], phrase[4], phrase[5]);
+
+    assertThat(stream.collect(Collectors.toList()), is(Arrays.asList(phrase)));
+  }
+
+  /**
+   * Collections are not the only thing that can be used as the source of streams. {@link Arrays} provides various
+   * methods for creating a stream from different types of arrays, including e.g. {@link Arrays#stream(Object[])}.
+   */
+  @Test
+  public void testCreateStreamFromArray() {
+    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
+
+    Stream<String> stream = Arrays.stream(phrase);
+
+    assertThat(stream.collect(Collectors.toList()), is(Arrays.asList(phrase)));
+  }
+
+  /**
+   * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns a
+   * stream of all the lines in a Reader.
+   */
+  @Test
+  public void testCreateStreamFromBufferedReader() throws Exception {
+    // Create a temp file containing multiple lines
+    Path tempFile = Files.createTempFile(this.getClass().getCanonicalName(), ".tmp");
+    tempFile.toFile().deleteOnExit();
+    BufferedWriter writer = Files.newBufferedWriter(tempFile, StandardCharsets.UTF_8);
+    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
+    for (String word : phrase) {
+      writer.write(word + System.lineSeparator());
+    }
+    writer.close();
+
+    BufferedReader reader = Files.newBufferedReader(tempFile, StandardCharsets.UTF_8);
+    // BufferedReader.lines() returns a stream containing lines in the Reader, these are only (lazily) read when the
+    // terminal operation of the stream is executed - e.g. collect()
+    List<String> readPhrase = reader.lines().collect(Collectors.toList());
+    reader.close();
+
+    assertThat(readPhrase, is(Arrays.asList(phrase)));
   }
 
   /**

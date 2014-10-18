@@ -16,9 +16,12 @@
 package com.neiljbrown.examples.java8;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.*;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -42,9 +45,7 @@ import org.junit.Test;
  * The API has two separate categories of date/time classes - local and zoned.
  * <p>
  * Local date/time time classes ({@link LocalDateTime}, {@link LocalDate} and {@link LocalTime}) are “local” in the
- * sense that they're specific to the local server, and don’t have any time zone context. They’re useful when just
- * manipulating date/times in a local (e.g. desktop) app, or in cases of distributed systems that have a consistent time
- * zone.
+ * sense that they don’t have any time zone context, and are akin to how people think of their (local) time.
  * <p>
  * A {@link ZonedDateTime} has a contextual time-zone. Use this class (rather than LocalDateTime) if you want to
  * represent a date and time without relying on the time-zone of a specific server.
@@ -236,5 +237,49 @@ public class DateTimeExamplesTest {
     final LocalDate localDate = LocalDate.of(expiry.getYear(), expiry.getMonthValue(), 1);
 
     assertThat(localDate.getMonth(), is(expiry.getMonth()));
+  }
+
+  /**
+   * Provides an example of using the new {@link java.time.Clock} class' {@link Clock#fixed(Instant, ZoneId)} method to
+   * obtain a clock that always returns the same instant (current date/time).
+   * <p>
+   * The date/time API includes a new abstract class {@link java.time.Clock} which can be used to find the current
+   * date/time (instant) for an identified time-zone. This duplicates a capability of the new date/time classes which
+   * provide a now() factory method, and, for discovery of the current time in UTC, the traditional use of
+   * {@link System#currentTimeMillis()}. However, Clock, is primarily intended to provide an injectable (non-static)
+   * means of deriving the current time, to support and simplify testing of time sensitive code.
+   * 
+   * @throws Exception If an unexpected error occurs.
+   */
+  @Test
+  public void testClockFixed() throws Exception {
+    // A clock which always returns a fixed date/time - in this case 'now', in UTC
+    Clock clock = Clock.fixed(Instant.now(), ZoneId.of("UTC"));
+
+    Instant instant1 = clock.instant();
+    Thread.sleep(1);
+    Instant instant2 = clock.instant();
+
+    assertThat(instant2, is(instant1));
+  }
+
+  /**
+   * Provides an example of using the new {@link java.time.Clock} class' {@link Clock#offset(Clock, Duration)} method to
+   * obtain a clock that returns an instant which is always a specified duration before or after the current date/time.
+   * <p>
+   * For further explanation of the {@link java.time.Clock} class, see {@link #testClockFixed()}.
+   * 
+   * @throws Exception If an unexpected error occurs.
+   */
+  @Test
+  public void testClockOffset() throws Exception {
+    // A clock with a date/time which is always 1 hour behind the current system date/time, in UTC
+    Clock clock = Clock.offset(Clock.systemUTC(), Duration.ofHours(-1));
+
+    Thread.sleep(1);
+    long currentTimeMillis = Instant.now().toEpochMilli();
+    
+    // The offset clock should return a date/time, behind the current date/time
+    assertThat(clock.instant().toEpochMilli(), lessThan(currentTimeMillis));
   }
 }
