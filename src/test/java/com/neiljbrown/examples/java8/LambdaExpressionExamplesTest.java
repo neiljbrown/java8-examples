@@ -120,16 +120,22 @@ public class LambdaExpressionExamplesTest {
   }
 
   /**
-   * Lambda expressions can also be used as a reference to a method. In this case the body of the lambda expression is
-   * simply a call to a method.
+   * Java 8 provides a new syntax known as a method reference that can be used as an alternative to a lambda expression
+   * that only takes a single parameter and invokes a method on it. This can be used, for example, when you 
+   * already have an existing class and method that implements a functional interface, 
+   * e.g. {@link java.util.function.Predicate}). As well as offering a terser syntax, a method reference provides 
+   * better code reuse, and avoids code duplication, when compared to a repeatedly used lambda expression.
+   * <p>
+   * @see <a href="https://docs.oracle.com/javase/tutorial/java/javaOO/methodreferences.html">Oracle Tutorial - Method References</a>   
    * 
    * @throws Exception If an unexpected error occurs.
    */
   @Test
   public void testMethodReference() throws Exception {
-    // Use a lambda expression to create an implementation of the java.io.FileFilter functional interface
+    // A lambda expression which takes a single param and only invokes a method on it. 
     FileFilter filter = (File f1) -> f1.canRead();
-    // There is a special syntax for abbreviating a lambda which invokes a method on a single param of a given type -
+    // There is a special syntax for abbreviating a lambda which only takes a single param and invokes a method on it
+    // which allows you to reuse existing methods - 
     // “{class}::{method-name}” means invoke canRead() on the method param which is an instance of File
     filter = File::canRead;
 
