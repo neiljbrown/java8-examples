@@ -17,7 +17,9 @@ package com.neiljbrown.examples.java8;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.collection.IsMapContaining.*;
 import static org.junit.Assert.*;
 
 import java.io.BufferedReader;
@@ -32,9 +34,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalInt;
 import java.util.function.Predicate;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.junit.Test;
@@ -44,18 +49,27 @@ import org.junit.Test;
  * href="http://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html">package of functional
  * interfaces</a> to support processing 'streams'.
  * <p>
- * The <a href="http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html">Streams API</a> is a new
- * concurrency feature which builds on the existing fork-join framework to support parallel processing of data
- * (utilising multi-core CPUs), whilst abstracting the complexity of the underlying multi-threading logic. A Stream can
- * be defined as a sequence of data elements from a source which supports performing aggregate (‘bulk’) operations on
- * the elements, both sequentially and in parallel. The source of a Stream can include Collections, Arrays, and some I/O
- * classes (e.g. BufferedReader).
+ * The <a href="http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html">Streams API</a> supports
+ * implementing a data-processing pipeline - applying a set of ordered operations on an input data-set - using a
+ * standard set of functional (filter, map (aka fold) and reduce) methods. The API supports parallel, as well as
+ * sequential, processing of data (utilising multi-core CPUs), whilst abstracting the complexity of the underlying
+ * multi-threading logic (using Java's existing fork-join framework).
+ * <p>
+ * A 'Stream' is an abstraction. It’s not a data-structure (like a List or other collection). It’s a pipeline
+ * (composition of functions) through which data flows and functions can be applied in composed steps. It’s also
+ * non-mutating - it doesn’t modify the source data.
+ * <p>
+ * The source of a Stream can include Collections, Arrays, and some I/O classes (e.g. BufferedReader).
  */
 public class StreamApiExamplesTest {
 
   /**
    * An example of how {@link java.util.stream.Stream#filter(java.util.function.Predicate)} can be used to declaratively
    * filter a {@link Collection} using a {@link Predicate}.
+   * <p>
+   * The filter() function eliminates values in the input stream based on a predicate, passing the filtered values ot
+   * the output stream. The no. of values in output stream is usually different to input stream. The function replaces
+   * the use of 'if' statements in imperative code.
    */
   @Test
   public void testFilter() {
@@ -91,16 +105,20 @@ public class StreamApiExamplesTest {
         // test() method of which is implemented as a Lambda expression
         .filter(s -> s.getDob().getYear() > yearOfBirthFilter)
         // Accumulate the elements of the stream back into a List
-        // It's only when this terminal operation on the Stream is performed that the processing takes place.
+        // The intermediate operations are lazily evaluated. It's only when this terminal operation on the Stream is
+        // performed that the processing takes place.
         .collect(Collectors.toList());
 
     assertThat(filteredStudents, contains(s2, s3));
   }
 
   /**
-   * Example use of {@link Stream#map(java.util.function.Function)} to 'map' a stream of elements (sourced from a
-   * collection) of one type to a stream of elements of another type, declaratively, by applying a
+   * Example use of {@link Stream#map(java.util.function.Function)} to 'map' (compute) a stream of elements (sourced
+   * from a collection) of one type to a stream of elements of another type, declaratively, by applying a
    * {@link java.util.function.Function} to each individual element.
+   * <p>
+   * The map() function transforms the type in the input stream to another type in the output stream. The no. of values
+   * in the output stream is always same as input stream. Allows you to apply a computation to the input stream.
    */
   @Test
   public void testMap() {
@@ -140,14 +158,15 @@ public class StreamApiExamplesTest {
     s2.addExamResult(new ExamResult("History", 72));
     students.add(s2);
 
-    // Create a list of all the student's exam results
+    // Create a list of all the student's exam results -
+    // Transforms the stream of students to a stream of their exam results
     // Uses a lambda expression to implement the Function passed to flatMap()
     List<ExamResult> examResults = students.stream().flatMap(student -> student.getExamResults().stream()).collect(
         Collectors.toList());
 
-    List<ExamResult> expextedExamResults = new ArrayList<>(s1.getExamResults());
-    expextedExamResults.addAll(s2.getExamResults());
-    assertThat(examResults, is(expextedExamResults));
+    List<ExamResult> expectedExamResults = new ArrayList<>(s1.getExamResults());
+    expectedExamResults.addAll(s2.getExamResults());
+    assertThat(examResults, is(expectedExamResults));
   }
 
   /**
@@ -199,9 +218,10 @@ public class StreamApiExamplesTest {
   }
 
   /**
-   * An example of how operations on {@link Stream} can be chained together. In this example the highest score that any
-   * student was awarded for a particular subject in a particular graduation year is determineddeclaratively by chaining
-   * operations on a Collection's stream.
+   * An example of how operations on {@link Stream} can be chained together to implement a data-processing pipeline.
+   * <p>
+   * In this example the highest score that any student was awarded for a particular subject in a particular graduation
+   * year is determined declaratively by chaining operations on a Collection's stream.
    * <p>
    * Also illustrates the use of one of the classes of {@link Stream} used for primitive elements -
    * {@link java.util.stream.IntStream}, and the terminal reduction stream function
@@ -247,7 +267,7 @@ public class StreamApiExamplesTest {
 
   /**
    * Collections are not the only thing that can be used as the source of streams. The Streams API supports creating a
-   * Stream from a supplied value or list of values aswell, using e.g. {@link Stream#of(Object...)}.
+   * Stream from a supplied value or list of values as well, using e.g. {@link Stream#of(Object...)}.
    */
   @Test
   public void testCreateStreamFromSuppliedValues() {
@@ -272,10 +292,10 @@ public class StreamApiExamplesTest {
   }
 
   /**
-   * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns a
-   * stream of all the lines in a Reader.
+   * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns
+   * a stream of all the lines in a Reader.
    * 
-   * @throws Exception If an unexpected error occurs. 
+   * @throws Exception If an unexpected error occurs.
    */
   @Test
   public void testCreateStreamFromBufferedReader() throws Exception {
@@ -291,11 +311,102 @@ public class StreamApiExamplesTest {
 
     BufferedReader reader = Files.newBufferedReader(tempFile, StandardCharsets.UTF_8);
     // BufferedReader.lines() returns a stream containing lines in the Reader, these are only (lazily) read when the
-    // terminal operation of the stream is executed - e.g. collect()
+    // terminal operation of the stream is executed - e.g. collect(), which means you can process the contents of a
+    // file efficiently, e.g. filter the lines.
     List<String> readPhrase = reader.lines().collect(Collectors.toList());
     reader.close();
 
     assertThat(readPhrase, is(Arrays.asList(phrase)));
+  }
+
+  /**
+   * An example of how to use a {@link Collector} which groups (aggregates) elements in a stream by a specified
+   * criteria.
+   * <p>
+   * The {@link Collectors} class provides factory methods for creating implementations of {@link Collector}. These
+   * classes provide reduction operations, such as accumulating elements into collections, summarizing elements
+   * according to various criteria, etc.
+   * 
+   * @throws Exception If an unexpected error occurs.
+   */
+  @Test
+  public void testCollectGroupingBy() throws Exception {
+    // Create a list of students in which more than one has the same date of birth
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
+    students.add(s2);
+    final Student s3 = new Student(s1.getDob(), "jim.bloggs@test.net");
+    students.add(s3);
+    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
+    students.add(s4);
+
+    //@formatter:off
+    Map<LocalDate, List<Student>> studentsGroupByDob = students.stream().collect(
+      // Create an impl of Collector which reduces the stream by grouping elements by a supplied function  
+      Collectors.groupingBy(Student::getDob)
+    );
+    //@formatter:on
+
+    assertThat(studentsGroupByDob.keySet(), hasSize(3));
+    assertThat(studentsGroupByDob, hasEntry(is(s1.getDob()), containsInAnyOrder(s1, s3)));
+    assertThat(studentsGroupByDob, hasEntry(is(s2.getDob()), contains(s2)));
+    assertThat(studentsGroupByDob, hasEntry(is(s4.getDob()), contains(s4)));
+  }
+
+  /**
+   * An example of how to process a stream that has no bounds, a so-called 'infinite' stream.
+   * <p>
+   * This example uses the Streams API to find the total of the square root of the first 'n' prime numbers, starting
+   * from 'x'.
+   * 
+   * @throws Exception If an unexpected error occurs.
+   */
+  @Test
+  public void testInfiniteStream() throws Exception {
+    final int numberOfPrimesToFind = 5;
+    final int startValue = 2;
+    final double expectedResult = Math.sqrt(2.0) + Math.sqrt(3.0) + Math.sqrt(5.0) + Math.sqrt(7.0) + Math.sqrt(11.0);
+    
+    // The imperative implementation of this function is verbose, requiring a loop and several temporary variables.
+    // Like all imperative code, it’s all about the how, and not the why - so it’s less readable -
+    double total = 0.0;
+    int countedPrimes = 0;
+    int nextValue = startValue;    
+    while (countedPrimes < numberOfPrimesToFind) {
+      if (isPrime(nextValue)) {
+        total += Math.sqrt(nextValue);
+        countedPrimes++;
+      }
+      nextValue++;
+    }
+    assertThat(total, is(expectedResult));
+
+    // The functional way - 
+    // Create an infinite stream (one with no bounds) of integers. This example starts at 1 and increments by 1. 
+    total = Stream.iterate(startValue, e -> e + 1) 
+      // Filter the stream to create an infinite stream of prime numbers
+      .filter(i -> isPrime(i))
+      // Uncomment this line to debug the found primes
+      //.peek(i -> System.out.println(i))
+      // Only process the first ‘n’ prime numbers from the stream
+      .limit(numberOfPrimesToFind)
+      // Convert the stream of prime numbers to their square roots
+      .map(i -> Math.sqrt(i))
+      // Sum the values, using the reduce function
+      .reduce(0.0, Double::sum);    
+    assertThat(total, is(expectedResult));    
+  }
+
+  /**
+   * @param number The number to be tested.
+   * @return true if a supplied number is a prime number - a no. greater than 1, that is divisible only by 1 and itself.
+   */
+  private static final boolean isPrime(int number) {
+    return number > 1 &&
+        // Functional way to check that a number is only divisible by 1 and itself, and not values in between
+        IntStream.range(2, number).noneMatch(i -> number % i == 0);
   }
 
   /**

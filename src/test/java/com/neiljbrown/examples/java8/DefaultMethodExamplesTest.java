@@ -63,7 +63,7 @@ import org.junit.Test;
  * <p>
  * In contrast abstract classes remain a more powerful concept which support the inheritance of internal state as well
  * as behaviour, and the optional provision of a constructor. However, you can still only inherit from one abstract
- * class, where as you can inherit default methods from multiple interfaces.
+ * class, whereas you can inherit default methods from multiple interfaces.
  * 
  * <h2>Further Reading</h2>
  * <p>
@@ -84,7 +84,7 @@ public class DefaultMethodExamplesTest {
     Logger consoleLogger = new MyConsoleLoggerImpl();
     consoleLogger.info("Logged to console.");
 
-    // Create an instance of the same interface which utilise an overridden implementation of the same default method
+    // Create an instance of the same interface which utilises an overridden implementation of the same default method
     final StringWriter stringWriter = new StringWriter();
     final String logMessage = "Logged to writer.";
     Logger myLogger = new MyLoggerImpl(stringWriter);

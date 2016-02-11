@@ -46,7 +46,7 @@ import org.junit.Test;
  * <h2>How should Optional be used?</h2>
  * <p>
  * For certain classes, including business services, repositories and utility methods, {@code Optional<T>} should be
- * used as a method return type in preference to a null. The fact that Optional is not serialisable may make it uses in
+ * used as a method return type in preference to a null. The fact that Optional is not serialisable may make its use in
  * other classes, such as DTOs, unsuitable.
  * <p>
  * java.util.Optional is intended to be used primarily as a return type, and not as a method parameter, including
