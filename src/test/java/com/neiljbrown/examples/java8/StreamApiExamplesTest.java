@@ -24,6 +24,7 @@ import static org.junit.Assert.*;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,9 +33,11 @@ import java.time.Month;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
@@ -45,31 +48,56 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * Examples of using the new Streams API in Java 8, and its companion <a
- * href="http://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html">package of functional
- * interfaces</a> to support processing 'streams'.
+ * Examples of using the new <a
+ * href="http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html">Streams API</a> in Java 8, and
+ * its companion <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html">package of
+ * functional interfaces</a> for Stream processing, implemented as a set of JUnit Test Cases.
  * <p>
- * The <a href="http://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html">Streams API</a> supports
- * implementing a data-processing pipeline - applying a set of ordered operations on an input data-set - using a
- * standard set of functional (filter, map (aka fold) and reduce) methods. The API supports parallel, as well as
- * sequential, processing of data (utilising multi-core CPUs), whilst abstracting the complexity of the underlying
- * multi-threading logic (using Java's existing fork-join framework).
+ * The Streams API supports processing sequences of data from supporting data-sources, using a set of high-level,
+ * declarative-style operations, allowing you to focus on the what rather than the how of data processing. The API
+ * supports parallel, as well as sequential, processing of data (utilising multi-core CPUs), whilst abstracting the
+ * complexity of the underlying multi-threading logic (using Java's existing fork-join framework).
  * <p>
- * A 'Stream' is an abstraction. It’s not a data-structure (like a List or other collection). It’s a pipeline
- * (composition of functions) through which data flows and functions can be applied in composed steps. It’s also
- * non-mutating - it doesn’t modify the source data.
+ * A <a href="http://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html">Stream</a> can be defined as a
+ * sequence of elements of the same type from a data-source which supports aggregate operations. The supported
+ * operations are a mix of database-like operations (e.g. findFirst, allMatch, sorted) and functional programming
+ * methods (e.g. filter, map, reduce). A Stream is not a data-structure (like a List or other type of Collection). It
+ * doesn't store the elements, but rather consumes and processes them from a source, on demand. Data-sources which
+ * support generating a Stream include Collections, Arrays, and some I/O classes (e.g. BufferedReader).
  * <p>
- * The source of a Stream can include Collections, Arrays, and some I/O classes (e.g. BufferedReader).
+ * Stream operations have the following characteristics -
+ * <ul>
+ * <li>Non-mutating - Stream operations never modify the source data.</li>
+ * <li>Support Pipelining - Many stream operations return a stream themselves. This allows the operations to be chained
+ * together to form larger, data-processing 'pipelines'. This in turn enables optimisations such as lazy evaluation,
+ * short-circuiting and loop fusion.</li>
+ * <li>Internalise Iteration - Processing a data-source using the Collections API requires (imperative) code to be
+ * written to iterate (loop) over each value. In contrast, Stream operations encapsulate details of how the data
+ * elements are processed, internalising any iteration of the values.</li>
+ * </ul>
+ * <p>
+ * Stream operations can be grouped into two categories:
+ * <ol>
+ * <li>Intermediate operations - These are Stream operations which are used to commence and continue processing the
+ * Stream. They return a Stream, and can therefore be connected together to form a pipeline. They are lazily evaluated
+ * and can often be optimised. Examples of these operations include filter, map, sorted, distinct.</li>
+ * <li>Terminal operations - These are Stream operations which are used to terminate a Stream's data-processing pipeline
+ * and return a result of another type, such as a List or Integer. Examples of these operations include collect,
+ * findFirst, and allMatch.</li>
+ * </ol>
  */
 public class StreamApiExamplesTest {
+
+  // ------------------------------------------------------------------------------------------------- Filter operations
+  // There are several types of operations that can be used to filter elements in a Stream.
 
   /**
    * An example of how {@link java.util.stream.Stream#filter(java.util.function.Predicate)} can be used to declaratively
    * filter a {@link Collection} using a {@link Predicate}.
    * <p>
-   * The filter() function eliminates values in the input stream based on a predicate, passing the filtered values ot
-   * the output stream. The no. of values in output stream is usually different to input stream. The function replaces
-   * the use of 'if' statements in imperative code.
+   * The filter() function eliminates values in the input stream based on a predicate, passing the filtered values to
+   * the output stream. The no. of values in output stream is usually different to the input stream. The function
+   * replaces the use of 'for' and 'if' statements in imperative code.
    */
   @Test
   public void testFilter() {
@@ -87,7 +115,7 @@ public class StreamApiExamplesTest {
     // Filter the list to only contain those born after 1975
     int yearOfBirthFilter = 1975;
 
-    // Before J8 applying the filter required writing imperative code with external (in application code) iteration -
+    // Pre J8 applying a filter required writing imperative code with external (in application code) iteration -
     List<Student> filteredStudents = new ArrayList<>(students.size());
     for (Student student : students) {
       if (student.getDob().getYear() > yearOfBirthFilter) {
@@ -113,6 +141,93 @@ public class StreamApiExamplesTest {
   }
 
   /**
+   * Example use of {@link Stream#distinct()} to remove duplicates from a sequence of elements (e.g. sourced from a
+   * Collection), returning only the unique ones.
+   */
+  @Test
+  public void testDistinct() {
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
+    students.add(s2);
+    final Student s3 = new Student(LocalDate.of(1976, Month.AUGUST, 7), "jim.bloggs@test.net");
+    students.add(s3);
+    // Add a duplicate Student to the list
+    students.add(s2);
+    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
+    students.add(s4);
+
+    List<Student> uniqueStudents = students.stream().distinct().collect(Collectors.toList());
+
+    assertThat(uniqueStudents, contains(s1, s2, s3, s4));
+    assertThat(uniqueStudents, hasSize(students.size() - 1));
+  }
+
+  /**
+   * Example use of {@link Stream#limit} to return a stream which contains at most 'n' elements. This method is
+   * typically used to return the first 'n' elements of a resulting, secondary stream after earlier operation(s) have
+   * processed all the elements.
+   * <p>
+   * As noted in the method's API docs, limit() is generally a cheap operation on sequential stream pipelines, but it
+   * can be quite expensive on _ordered_ parallel pipelines.
+   */
+  @Test
+  public void testLimit() {
+    // Create a list of students with different DOB
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
+    students.add(s2);
+    final Student s3 = new Student(LocalDate.of(1976, Month.AUGUST, 7), "jim.bloggs@test.net");
+    students.add(s3);
+    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
+    students.add(s4);
+
+    // This example tackles the problem of how to get the two oldest students, in ascending order (oldest first)
+    final List<Student> expectedStudents = Arrays.asList(s4, s1);
+
+    // Pre J8 implementation using imperative logic
+    List<Student> oldestTwoStudents = new ArrayList<>(2);
+    Student oldestStudent = null;
+    Student secondOldestStudent = null;
+    for (Student s : students) {
+      if (oldestStudent == null) {
+        oldestStudent = s;
+      } else if (s.getDob().isBefore(oldestStudent.getDob())) {
+        secondOldestStudent = oldestStudent;
+        oldestStudent = s;
+      } else if (secondOldestStudent == null || s.getDob().isBefore(secondOldestStudent.getDob())) {
+        secondOldestStudent = s;
+      }
+    }
+    oldestTwoStudents.add(oldestStudent);
+    oldestTwoStudents.add(secondOldestStudent);
+    assertThat(oldestTwoStudents, is(expectedStudents));
+
+    // Pre J8 implementation - Improved solution. Removes need for loop by sorting list first, then generating sublist
+    List<Student> studentsSortedByDob = new ArrayList<>(students);
+    studentsSortedByDob.sort(new Comparator<Student>() {
+      @Override
+      public int compare(Student s1, Student s2) {
+        return s1.getDob().compareTo(s2.getDob());
+      }
+    });
+    oldestTwoStudents = studentsSortedByDob.subList(0, 2);
+    assertThat(oldestTwoStudents, is(expectedStudents));
+
+    // From J8 onwards - Sort list (using Lambda expr to implement comparator), then apply a limit to resulting stream
+    oldestTwoStudents = students.stream()
+        .sorted((stud1, stud2) -> stud1.getDob().compareTo(stud2.getDob()))
+        .limit(2)
+        .collect(Collectors.toList());
+    assertThat(oldestTwoStudents, is(expectedStudents));
+  }
+
+  // ---------------------------------------------------------------------------------------------------- Map operations
+
+  /**
    * Example use of {@link Stream#map(java.util.function.Function)} to 'map' (compute) a stream of elements (sourced
    * from a collection) of one type to a stream of elements of another type, declaratively, by applying a
    * {@link java.util.function.Function} to each individual element.
@@ -136,8 +251,7 @@ public class StreamApiExamplesTest {
     // Uses a lambda expression to implement the Function passed to map(), using the method reference "::" syntax
     List<String> studentEmails = students.stream().map(Student::getEmail).collect(Collectors.toList());
 
-    assertThat(studentEmails,
-        contains("joe.bloggs@test.net", "jane.bloggs@test.net", "jim.bloggs@test.net", "nellie.bloggs@test.net"));
+    assertThat(studentEmails, contains(s1.getEmail(), s2.getEmail(), s3.getEmail(), s4.getEmail()));
   }
 
   /**
@@ -169,29 +283,153 @@ public class StreamApiExamplesTest {
     assertThat(examResults, is(expectedExamResults));
   }
 
+  // ------------------------------------------------------------------------------------------------- Reduce operations
+  // Reduction operations concern combining elements from a source to yield a single value, e.g. sum values, max value.
+  // Reduce operations repeatedly apply an operation to each element until a result is produced.
+
   /**
-   * Example use of {@link Stream#distinct()} to remove duplicates from a sequence of elements (e.g. sourced from a
-   * Collection).
+   * Example of how to use the general-purpose {@link Stream#reduce(Object, java.util.function.BinaryOperator)}
+   * operation to sum a list of numbers. This is a terminal Stream operation.
    */
   @Test
-  public void testDistinct() {
+  public void testReduce() {
+    // Test fixture - A list of Students, each with student fees that need to be totaled.
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "jo.bloggs@test.net", new BigDecimal("891.32"));
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "ja.bloggs@test.net", new BigDecimal("16.99"));
+    students.add(s2);
+    final Student s3 = new Student(LocalDate.of(1976, Month.AUGUST, 7), "ji.bloggs@test.net", new BigDecimal("578.50"));
+    students.add(s3);
+    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nel.bloggs@test.net", new BigDecimal("95.00"));
+    students.add(s4);
+
+    // This example solves the requirement to calculate the total fees paid by all the students
+    BigDecimal expectedTotalFees = s1.getFee().add(s2.getFee()).add(s3.getFee()).add(s4.getFee());
+
+    // Pre Java 8, calculating the sum of a list of numbers entailed using a loop -
+    BigDecimal totalFees = new BigDecimal("0.00");
+    for (Student s : students) {
+      totalFees = totalFees.add(s.getFee());
+    }
+    assertThat(totalFees, is(expectedTotalFees));
+
+    // From Java 8 onwards, Stream.reduce() can be used to sum the numbers, by applying a BinaryOperator to each element
+    // which combines two elements to produce a new value.
+    totalFees = students.stream()
+        .map(s -> s.getFee())
+        // The first param is the initial value of the result.
+        // The second param is the operation for combining the elements of the list, in this case an addition operation
+        .reduce(new BigDecimal("0.00"), (fee1, fee2) -> fee1.add(fee2));
+    assertThat(totalFees, is(expectedTotalFees));
+  }
+
+  /**
+   * Example of how to use the {@link Stream#max(Comparator)} Stream operation to return the 'maximum' element of a
+   * stream, according to a supplied Comparator.
+   * <p>
+   * The max() operation is a special-case of a reduction operation which is so common that the Streams API provides an
+   * implementation out-of-the-box.
+   */
+  @Test
+  public void testMax() {
+    // Test fixture - A list of Students, each with student fees for which we want to find the maximum
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "jo.bloggs@test.net", new BigDecimal("291.32"));
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "ja.bloggs@test.net", new BigDecimal("16.99"));
+    students.add(s2);
+    final Student s3 = new Student(LocalDate.of(1976, Month.AUGUST, 7), "ji.bloggs@test.net", new BigDecimal("578.50"));
+    students.add(s3);
+    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nel.bloggs@test.net", new BigDecimal("95.00"));
+    students.add(s4);
+
+    // This example solves the requirement to find the max fee paid by a student
+    BigDecimal expectedMaxFee = s3.getFee();
+
+    // Pre Java 8, finding the max of a list of numbers entailed using a loop, and temp variable -
+    BigDecimal maxFee = new BigDecimal("0.00");
+    for (Student s : students) {
+      if (s.getFee().compareTo(maxFee) > 0) {
+        maxFee = s.getFee();
+      }
+    }
+    assertThat(maxFee, is(expectedMaxFee));
+
+    // From Java 8 onwards, Stream.max() can be used to find the max element of a list
+    Optional<BigDecimal> optionalMaxFee = students.stream()
+        .map(s -> s.getFee())
+        .max((fee1, fee2) -> fee1.compareTo(fee2));
+    assertThat(optionalMaxFee.orElse(new BigDecimal("0.00")), is(expectedMaxFee));
+  }
+
+  // -------------------------------------------------------------------------------------------------- Match operations
+  // Use Match stream operations to determine whether any, some or no elements in the stream match a given property.
+  // All Match operations take a Predicate as an argument and return a boolean result.
+
+  /**
+   * Example use of {@link Stream#anyMatch(Predicate)} to determine whether any (one or more) elements in the stream
+   * match a specified predicate (condition).
+   */
+  @Test
+  public void testAnyMatch() {
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
+    s1.addExamResult(new ExamResult("Maths", 96));
+    s1.addExamResult(new ExamResult("Physics", 69));
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
+    s2.addExamResult(new ExamResult("English Literature", 87));
+    s2.addExamResult(new ExamResult("History", 72));
+    students.add(s2);
+    final Student s3 = new Student(LocalDate.of(1976, Month.AUGUST, 7), "jim.bloggs@test.net");
+    s2.addExamResult(new ExamResult("Chemistry", 54));
+    s2.addExamResult(new ExamResult("Maths", 90));
+    students.add(s3);
+
+    boolean expertExists = students.stream()
+        .flatMap(student -> student.getExamResults().stream())
+        // Are there any experts?
+        .anyMatch(er -> er.getScore() > 95);
+    assertThat(expertExists, is(true));
+
+    boolean geniusExists = students.stream()
+        .flatMap(student -> student.getExamResults().stream())
+        // Are there any geniuses?
+        .anyMatch(er -> er.getScore() == 100);
+    assertThat(geniusExists, is(false));
+
+    boolean geographyStudentsExist = students.stream()
+        .flatMap(student -> student.getExamResults().stream())
+        // Did anybody study sit an exam for this subject?
+        .anyMatch(er -> er.getExam().equalsIgnoreCase("geography"));
+    assertThat(geographyStudentsExist, is(false));
+  }
+
+  // --------------------------------------------------------------------------------------------------- Find operations
+  // The Stream interface provides find operations for retrieving the first or any arbitrary element from a stream.
+
+  /**
+   * Example use of {@link Stream#findFirst()} to return the first element in the stream.
+   */
+  @Test
+  public void testFindFirst() {
     final List<Student> students = new ArrayList<>();
     final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
     students.add(s1);
     final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
     students.add(s2);
-    final Student s3 = new Student(LocalDate.of(1976, Month.AUGUST, 7), "jim.bloggs@test.net");
-    students.add(s3);
-    // Add a duplicate Student to the list
-    students.add(s2);
-    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
-    students.add(s4);
 
-    List<Student> uniqueStudents = students.stream().distinct().collect(Collectors.toList());
+    Optional<Student> s = students.stream().findFirst();
+    assertThat(s.get(), is(s1));
 
-    assertThat(uniqueStudents, contains(s1, s2, s3, s4));
-    assertThat(uniqueStudents, hasSize(students.size() - 1));
+    // Stream.findFirst() returns an Optional to handle the case where the stream is empty (contains no elements)
+    final List<Student> noStudents = Collections.emptyList();
+    s = noStudents.stream().findFirst();
+    assertThat(s.isPresent(), is(false));
   }
+
+  // --------------------------------------------------------------------------------------------------- Sort operations
 
   /**
    * Example use of {@link Stream#sorted()} and {@link Stream#sorted(java.util.Comparator)} to sort a sequence of
@@ -209,13 +447,113 @@ public class StreamApiExamplesTest {
     students.add(s3);
     students.add(s4);
 
-    List<Student> studentsSortedById = students.stream().sorted().collect(Collectors.toList());
+    //@formatter:off
+    List<Student> studentsSortedById = students.stream()
+        .sorted()
+        .collect(Collectors.toList());
+    //@formatter:on
     assertThat(studentsSortedById, contains(s1, s2, s3, s4));
 
     List<Student> studentsSortedByDob = students.stream().sorted(new Student.DobComparator()).collect(
         Collectors.toList());
     assertThat(studentsSortedByDob, contains(s4, s1, s3, s2));
   }
+
+  // ------------------------------------------------------------------------------------------------ Collect operations
+  // Collect operations are terminal Stream operations like reduction, which allow you to accumulate (aggregate)
+  // elements into a summary result.
+  // Collect operations use java.util.stream.Collector to describe how to accumulate the elements.
+
+  /**
+   * An example of how to use a {@link Collector} which groups (aggregates) elements in a stream by a specified
+   * criteria.
+   * <p>
+   * The {@link Collectors} class provides factory methods for creating implementations of {@link Collector}. These
+   * classes provide reduction operations, such as accumulating elements into collections, summarizing elements
+   * according to various criteria, etc.
+   * 
+   * @throws Exception If an unexpected error occurs.
+   */
+  @Test
+  public void testCollectGroupingBy() throws Exception {
+    // Create a list of students in which more than one has the same date of birth
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
+    students.add(s2);
+    final Student s3 = new Student(s1.getDob(), "jim.bloggs@test.net");
+    students.add(s3);
+    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
+    students.add(s4);
+
+    //@formatter:off
+    Map<LocalDate, List<Student>> studentsGroupByDob = students.stream().collect(
+      // Create an impl of Collector which reduces the stream by grouping elements by a supplied function  
+      Collectors.groupingBy(Student::getDob)
+    );
+    //@formatter:on
+
+    // The Collectors.groupingBy() Collector returns a Map representing the aggregated stream, keyed by grouping type
+    assertThat(studentsGroupByDob.keySet(), hasSize(3));
+    assertThat(studentsGroupByDob, hasEntry(is(s1.getDob()), containsInAnyOrder(s1, s3)));
+    assertThat(studentsGroupByDob, hasEntry(is(s2.getDob()), contains(s2)));
+    assertThat(studentsGroupByDob, hasEntry(is(s4.getDob()), contains(s4)));
+  }
+
+  // ------------------------------------------------------------------------- Create Streams from data-sources & values
+
+  /**
+   * Collections are not the only thing that can be used as the source of streams. The Streams API supports creating a
+   * Stream from a supplied value or list of values as well, using e.g. {@link Stream#of(Object...)}.
+   */
+  @Test
+  public void testCreateStreamFromSuppliedValues() {
+    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
+
+    Stream<String> stream = Stream.of(phrase[0], phrase[1], phrase[2], phrase[3], phrase[4], phrase[5]);
+
+    assertThat(stream.collect(Collectors.toList()), is(Arrays.asList(phrase)));
+  }
+
+  /**
+   * Collections are not the only thing that can be used as the source of streams. {@link Arrays} provides various
+   * methods for creating a stream from different types of arrays, including e.g. {@link Arrays#stream(Object[])}.
+   */
+  @Test
+  public void testCreateStreamFromArray() {
+    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
+
+    Stream<String> stream = Arrays.stream(phrase);
+
+    assertThat(stream.collect(Collectors.toList()), is(Arrays.asList(phrase)));
+  }
+
+  /**
+   * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns
+   * a stream of all the lines in a Reader.
+   * 
+   * @throws Exception If an unexpected error occurs.
+   */
+  @Test
+  public void testCreateStreamFromBufferedReader() throws Exception {
+    // Create a temp file containing multiple lines
+    Path tempFile = Files.createTempFile(this.getClass().getCanonicalName(), ".tmp");
+    tempFile.toFile().deleteOnExit();
+    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };    
+    Files.write(tempFile, Arrays.asList(phrase), StandardCharsets.UTF_8);
+    
+    BufferedReader reader = Files.newBufferedReader(tempFile, StandardCharsets.UTF_8);    
+    // BufferedReader.lines() returns a stream containing lines in the Reader, these are only (lazily) read when the
+    // terminal operation of the stream is executed - e.g. collect(), which means you can process the contents of a
+    // file efficiently, e.g. filter the lines.
+    List<String> readPhrase = reader.lines().collect(Collectors.toList());
+    reader.close();
+
+    assertThat(readPhrase, is(Arrays.asList(phrase)));
+  }
+
+  // ------------------------------------------------------------------------------------------- Other Stream operations
 
   /**
    * An example of how operations on {@link Stream} can be chained together to implement a data-processing pipeline.
@@ -266,96 +604,6 @@ public class StreamApiExamplesTest {
   }
 
   /**
-   * Collections are not the only thing that can be used as the source of streams. The Streams API supports creating a
-   * Stream from a supplied value or list of values as well, using e.g. {@link Stream#of(Object...)}.
-   */
-  @Test
-  public void testCreateStreamFromSuppliedValues() {
-    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
-
-    Stream<String> stream = Stream.of(phrase[0], phrase[1], phrase[2], phrase[3], phrase[4], phrase[5]);
-
-    assertThat(stream.collect(Collectors.toList()), is(Arrays.asList(phrase)));
-  }
-
-  /**
-   * Collections are not the only thing that can be used as the source of streams. {@link Arrays} provides various
-   * methods for creating a stream from different types of arrays, including e.g. {@link Arrays#stream(Object[])}.
-   */
-  @Test
-  public void testCreateStreamFromArray() {
-    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
-
-    Stream<String> stream = Arrays.stream(phrase);
-
-    assertThat(stream.collect(Collectors.toList()), is(Arrays.asList(phrase)));
-  }
-
-  /**
-   * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns
-   * a stream of all the lines in a Reader.
-   * 
-   * @throws Exception If an unexpected error occurs.
-   */
-  @Test
-  public void testCreateStreamFromBufferedReader() throws Exception {
-    // Create a temp file containing multiple lines
-    Path tempFile = Files.createTempFile(this.getClass().getCanonicalName(), ".tmp");
-    tempFile.toFile().deleteOnExit();
-    BufferedWriter writer = Files.newBufferedWriter(tempFile, StandardCharsets.UTF_8);
-    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
-    for (String word : phrase) {
-      writer.write(word + System.lineSeparator());
-    }
-    writer.close();
-
-    BufferedReader reader = Files.newBufferedReader(tempFile, StandardCharsets.UTF_8);
-    // BufferedReader.lines() returns a stream containing lines in the Reader, these are only (lazily) read when the
-    // terminal operation of the stream is executed - e.g. collect(), which means you can process the contents of a
-    // file efficiently, e.g. filter the lines.
-    List<String> readPhrase = reader.lines().collect(Collectors.toList());
-    reader.close();
-
-    assertThat(readPhrase, is(Arrays.asList(phrase)));
-  }
-
-  /**
-   * An example of how to use a {@link Collector} which groups (aggregates) elements in a stream by a specified
-   * criteria.
-   * <p>
-   * The {@link Collectors} class provides factory methods for creating implementations of {@link Collector}. These
-   * classes provide reduction operations, such as accumulating elements into collections, summarizing elements
-   * according to various criteria, etc.
-   * 
-   * @throws Exception If an unexpected error occurs.
-   */
-  @Test
-  public void testCollectGroupingBy() throws Exception {
-    // Create a list of students in which more than one has the same date of birth
-    final List<Student> students = new ArrayList<>();
-    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
-    students.add(s1);
-    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
-    students.add(s2);
-    final Student s3 = new Student(s1.getDob(), "jim.bloggs@test.net");
-    students.add(s3);
-    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
-    students.add(s4);
-
-    //@formatter:off
-    Map<LocalDate, List<Student>> studentsGroupByDob = students.stream().collect(
-      // Create an impl of Collector which reduces the stream by grouping elements by a supplied function  
-      Collectors.groupingBy(Student::getDob)
-    );
-    //@formatter:on
-
-    assertThat(studentsGroupByDob.keySet(), hasSize(3));
-    assertThat(studentsGroupByDob, hasEntry(is(s1.getDob()), containsInAnyOrder(s1, s3)));
-    assertThat(studentsGroupByDob, hasEntry(is(s2.getDob()), contains(s2)));
-    assertThat(studentsGroupByDob, hasEntry(is(s4.getDob()), contains(s4)));
-  }
-
-  /**
    * An example of how to process a stream that has no bounds, a so-called 'infinite' stream.
    * <p>
    * This example uses the Streams API to find the total of the square root of the first 'n' prime numbers, starting
@@ -368,12 +616,12 @@ public class StreamApiExamplesTest {
     final int numberOfPrimesToFind = 5;
     final int startValue = 2;
     final double expectedResult = Math.sqrt(2.0) + Math.sqrt(3.0) + Math.sqrt(5.0) + Math.sqrt(7.0) + Math.sqrt(11.0);
-    
+
     // The imperative implementation of this function is verbose, requiring a loop and several temporary variables.
     // Like all imperative code, it’s all about the how, and not the why - so it’s less readable -
     double total = 0.0;
     int countedPrimes = 0;
-    int nextValue = startValue;    
+    int nextValue = startValue;
     while (countedPrimes < numberOfPrimesToFind) {
       if (isPrime(nextValue)) {
         total += Math.sqrt(nextValue);
@@ -383,20 +631,20 @@ public class StreamApiExamplesTest {
     }
     assertThat(total, is(expectedResult));
 
-    // The functional way - 
-    // Create an infinite stream (one with no bounds) of integers. This example starts at 1 and increments by 1. 
-    total = Stream.iterate(startValue, e -> e + 1) 
-      // Filter the stream to create an infinite stream of prime numbers
-      .filter(i -> isPrime(i))
-      // Uncomment this line to debug the found primes
-      //.peek(i -> System.out.println(i))
-      // Only process the first ‘n’ prime numbers from the stream
-      .limit(numberOfPrimesToFind)
-      // Convert the stream of prime numbers to their square roots
-      .map(i -> Math.sqrt(i))
-      // Sum the values, using the reduce function
-      .reduce(0.0, Double::sum);    
-    assertThat(total, is(expectedResult));    
+    // The functional way -
+    // Create an infinite stream (one with no bounds) of integers. This example starts at 1 and increments by 1.
+    total = Stream.iterate(startValue, e -> e + 1)
+        // Filter the stream to create an infinite stream of prime numbers
+        .filter(i -> isPrime(i))
+        // Uncomment this line to debug the found primes
+        // .peek(i -> System.out.println(i))
+        // Only process the first ‘n’ prime numbers from the stream
+        .limit(numberOfPrimesToFind)
+        // Convert the stream of prime numbers to their square roots
+        .map(i -> Math.sqrt(i))
+        // Sum the values, using the reduce function
+        .reduce(0.0, Double::sum);
+    assertThat(total, is(expectedResult));
   }
 
   /**
@@ -409,22 +657,33 @@ public class StreamApiExamplesTest {
         IntStream.range(2, number).noneMatch(i -> number % i == 0);
   }
 
+  // Test Fixtures, Supporting Classes
+
   /**
    * Student domain object. Used to support these examples.
    */
   static class Student implements Comparable<Student> {
     private static int lastId;
+
+    private static final BigDecimal STANDARD_FEE = new BigDecimal(650.72);
+
     private final int id;
     private final String email;
     private final LocalDate dob;
     private LocalDate graduationDate;
     private final List<ExamResult> examResults;
+    private final BigDecimal fee;
 
     public Student(LocalDate dob, String email) {
+      this(dob, email, STANDARD_FEE);
+    }
+
+    public Student(LocalDate dob, String email, BigDecimal fee) {
       this.id = ++Student.lastId;
       this.dob = dob;
       this.email = email;
       this.examResults = new ArrayList<>();
+      this.fee = fee;
     }
 
     public final int getId() {
@@ -453,6 +712,10 @@ public class StreamApiExamplesTest {
 
     public final List<ExamResult> getExamResults() {
       return examResults;
+    }
+
+    public final BigDecimal getFee() {
+      return this.fee;
     }
 
     @Override
