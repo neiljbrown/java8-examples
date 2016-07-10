@@ -15,15 +15,18 @@
  */
 package com.neiljbrown.examples.java8;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.collection.IsMapContaining.*;
 import static org.junit.Assert.*;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -489,7 +492,7 @@ public class StreamApiExamplesTest {
 
     //@formatter:off
     Map<LocalDate, List<Student>> studentsGroupByDob = students.stream().collect(
-      // Create an impl of Collector which reduces the stream by grouping elements by a supplied function  
+      // Create impl of Collector which reduces the stream by grouping elements by a supplied function  
       Collectors.groupingBy(Student::getDob)
     );
     //@formatter:on
@@ -499,6 +502,53 @@ public class StreamApiExamplesTest {
     assertThat(studentsGroupByDob, hasEntry(is(s1.getDob()), containsInAnyOrder(s1, s3)));
     assertThat(studentsGroupByDob, hasEntry(is(s2.getDob()), contains(s2)));
     assertThat(studentsGroupByDob, hasEntry(is(s4.getDob()), contains(s4)));
+  }
+
+  /**
+   * An example of how to use {@link Collectors#joining} to obtain an implementation of a {@link Collector} that 
+   * concatenates a stream of strings in the order they're processed
+   * <p>
+   * This collection operation is useful when converting (mapping) an input stream of objects to a stream of strings
+   * that subsequently need reporting as one. This example uses the overloaded method 
+   * {@link Collectors#joining(CharSequence)} to add an optional delimiter between the concatenated strings. There are
+   * also overloaded methods for adding optional prefixes and suffixes to each string.  
+   * 
+   * @throws Exception If an unexpected error occurs.
+   */
+  @Test
+  public void testCollectJoining() throws Exception {
+    List<FieldError> errors = new ArrayList<>();
+    FieldError error1 = new FieldError("firstName", "invalid first name");
+    errors.add(error1);
+    FieldError error2 = new FieldError("lastName", "invalid last name");
+    errors.add(error2);
+
+    String errorMessages = errors.stream()
+        .map((fieldError) -> "Field [" + fieldError.getFieldName() + "] " + fieldError.getMessage())
+        // Create impl of Collector which reduces the stream by concatenating its elements, separated by delimiter
+        .collect(Collectors.joining(System.lineSeparator()));
+
+    assertThat(errorMessages, not(isEmptyOrNullString()));
+    assertThat(errorMessages, startsWith("Field [" + error1.getFieldName()));
+    assertThat(errorMessages, containsString("Field [" + error2.getFieldName()));
+  }
+
+  class FieldError {
+    private String fieldName;
+    private String message;
+
+    public FieldError(String fieldName, String message) {
+      this.fieldName = fieldName;
+      this.message = message;
+    }
+
+    public final String getFieldName() {
+      return this.fieldName;
+    }
+
+    public final String getMessage() {
+      return this.message;
+    }
   }
 
   // ------------------------------------------------------------------------- Create Streams from data-sources & values
@@ -540,10 +590,10 @@ public class StreamApiExamplesTest {
     // Create a temp file containing multiple lines
     Path tempFile = Files.createTempFile(this.getClass().getCanonicalName(), ".tmp");
     tempFile.toFile().deleteOnExit();
-    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };    
+    String[] phrase = new String[] { "Everything", "comes", "to", "those", "who", "wait." };
     Files.write(tempFile, Arrays.asList(phrase), StandardCharsets.UTF_8);
-    
-    BufferedReader reader = Files.newBufferedReader(tempFile, StandardCharsets.UTF_8);    
+
+    BufferedReader reader = Files.newBufferedReader(tempFile, StandardCharsets.UTF_8);
     // BufferedReader.lines() returns a stream containing lines in the Reader, these are only (lazily) read when the
     // terminal operation of the stream is executed - e.g. collect(), which means you can process the contents of a
     // file efficiently, e.g. filter the lines.
