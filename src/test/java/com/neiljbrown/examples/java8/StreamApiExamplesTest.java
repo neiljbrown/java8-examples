@@ -38,10 +38,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -464,7 +466,8 @@ public class StreamApiExamplesTest {
 
   // ------------------------------------------------------------------------------------------------ Collect operations
   // Collect operations are terminal Stream operations like reduction, which allow you to accumulate (aggregate)
-  // elements into a summary result.
+  // elements into a summary result. In some cases they can also be used to convert from one type to another at
+  // aggregation time.
   // Collect operations use java.util.stream.Collector to describe how to accumulate the elements.
 
   /**
@@ -505,25 +508,25 @@ public class StreamApiExamplesTest {
   }
 
   /**
-   * An example of how to use {@link Collectors#joining} to obtain an implementation of a {@link Collector} that 
+   * An example of how to use {@link Collectors#joining} to obtain an implementation of a {@link Collector} that
    * concatenates a stream of strings in the order they're processed
    * <p>
    * This collection operation is useful when converting (mapping) an input stream of objects to a stream of strings
-   * that subsequently need reporting as one. This example uses the overloaded method 
+   * that subsequently need reporting as one. This example uses the overloaded method
    * {@link Collectors#joining(CharSequence)} to add an optional delimiter between the concatenated strings. There are
-   * also overloaded methods for adding optional prefixes and suffixes to each string.  
+   * also overloaded methods for adding optional prefixes and suffixes to each string.
    * 
    * @throws Exception If an unexpected error occurs.
    */
   @Test
   public void testCollectJoining() throws Exception {
-    List<FieldError> errors = new ArrayList<>();
+    List<FieldError> fieldErrors = new ArrayList<>();
     FieldError error1 = new FieldError("firstName", "invalid first name");
-    errors.add(error1);
+    fieldErrors.add(error1);
     FieldError error2 = new FieldError("lastName", "invalid last name");
-    errors.add(error2);
+    fieldErrors.add(error2);
 
-    String errorMessages = errors.stream()
+    String errorMessages = fieldErrors.stream()
         .map((fieldError) -> "Field [" + fieldError.getFieldName() + "] " + fieldError.getMessage())
         // Create impl of Collector which reduces the stream by concatenating its elements, separated by delimiter
         .collect(Collectors.joining(System.lineSeparator()));
@@ -531,6 +534,33 @@ public class StreamApiExamplesTest {
     assertThat(errorMessages, not(isEmptyOrNullString()));
     assertThat(errorMessages, startsWith("Field [" + error1.getFieldName()));
     assertThat(errorMessages, containsString("Field [" + error2.getFieldName()));
+  }
+
+  /**
+   * An example of how to use
+   * {@link Collectors#toConcurrentMap(java.util.function.Function, java.util.function.Function)} to convert an input
+   * Map to another type of Map.
+   */
+  @Test
+  public void testCollectConvertAMap() {
+    Map<String, FieldError> fieldErrors = new HashMap<>();
+    FieldError error1 = new FieldError("firstName", "invalid first name");
+    fieldErrors.put(error1.getFieldName(), error1);
+    fieldErrors.put("invalid", null);
+    FieldError error2 = new FieldError("lastName", "invalid last name");
+    fieldErrors.put(error2.getFieldName(), error2);
+
+    // Convert a Map<String,FieldError> to a Map<String,String>
+    ConcurrentMap<String, String> fieldErrorMessages = fieldErrors.entrySet().stream()
+        .filter(entry -> entry.getValue() != null)
+        // Use Collectors.toConcurrentMap() to convert the stream's map entry key and value to a new type and
+        // aggregate the new map entries into a new Map
+        .collect(Collectors.toConcurrentMap(entry -> entry.getKey(),
+            entry -> entry.getValue().getMessage()));
+
+    assertThat(fieldErrorMessages.keySet(), hasSize(2));
+    assertThat(fieldErrorMessages, hasEntry(is(error1.getFieldName()), is(error1.getMessage())));
+    assertThat(fieldErrorMessages, hasEntry(is(error2.getFieldName()), is(error2.getMessage())));
   }
 
   class FieldError {
