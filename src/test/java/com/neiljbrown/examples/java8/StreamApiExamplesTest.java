@@ -465,10 +465,17 @@ public class StreamApiExamplesTest {
   }
 
   // ------------------------------------------------------------------------------------------------ Collect operations
-  // Collect operations are terminal Stream operations like reduction, which allow you to accumulate (aggregate)
+  // Collect operations are terminal Stream operations, like reduction, that allow you to accumulate (aggregate)
   // elements into a summary result. In some cases they can also be used to convert from one type to another at
   // aggregation time.
-  // Collect operations use java.util.stream.Collector to describe how to accumulate the elements.
+  //
+  // Collect operations on a Stream use the java.util.stream.Collector interface to describe how to accumulate the
+  // elements. The java.util.stream.Collectors (plural) interface provides factory methods for creating various 
+  // implementations of Collector.
+  //
+  // Collector exist to convert a stream to various types of java.util.Collection. As a result the Stream.collect()
+  // methods are commonly used, in conjunction with other functional methods, to replace pre-Java 8 imperative code / 
+  // external loops for converting one type of collection to another.
 
   /**
    * An example of how to use a {@link Collector} which groups (aggregates) elements in a stream by a specified
