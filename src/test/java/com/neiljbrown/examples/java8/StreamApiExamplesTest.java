@@ -90,6 +90,8 @@ import org.junit.Test;
  * and return a result of another type, such as a List or Integer. Examples of these operations include collect,
  * findFirst, and allMatch.</li>
  * </ol>
+ * 
+ * @see IntStreamExamplesTest
  */
 public class StreamApiExamplesTest {
 

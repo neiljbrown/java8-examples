@@ -3,7 +3,7 @@
 ## Overview
 This project contains Java code examples for the major new language features that were added to Java 8.
 
-The examples are implemented as a set of unit tests, themselves implemented using JUnit (and Hamcrest).
+The examples are implemented as a set of unit tests, themselves implemented using JUnit (Hamcrest and AssertJ).
 
 ## Code
 The source code for the examples can be found in the src/test/java folder.
