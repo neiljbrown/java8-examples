@@ -56,13 +56,13 @@ import org.junit.Test;
  * {@link java.util.Optional#ifPresent} supports chaining functions which may not return values.
  * <p>
  * Summary usage guidelines:
- * <br/>
+ * <p>
  * Method return values – Consider using Optional instead of returning nulls as the intentions of the method API will 
  * clearer and calling code will be forced to handle the null case in a cleaner way.
- * <br/>
+ * <p>
  * Instance fields - Do not use Optional. It's not serializable and adds a wrapping overhead. Just use them within 
  * methods that process the fields instead.
- * <br/>
+ * <p>
  * Method params - Do not use Optional. It pollutes the method signature. Instead just promote params to Optional 
  * within the method if useful.
  * 

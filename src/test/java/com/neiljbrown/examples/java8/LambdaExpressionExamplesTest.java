@@ -214,8 +214,8 @@ public class LambdaExpressionExamplesTest {
    * reimplementing a Comparator using a lambda expression in place of a anonymous inner class, plus a couple of other
    * new Java 8 language features. Full list of refactorings -
    * <p>
-   * 1) Implementation of a Comparator using a lambda expression rather than an anonymous inner class.<br/>
-   * 2) Using Java 8's new List.sort() instance method in place of Collections.sort() utility method.<br/>
+   * 1) Implementation of a Comparator using a lambda expression rather than an anonymous inner class.<br>
+   * 2) Using Java 8's new List.sort() instance method in place of Collections.sort() utility method.<br>
    * 3) Using Java 8's new Comparator.comparing() utility method to generate the implementation of a Comparator from a
    * lambda expression which just supplies the method to be used to retrieve the values to be compared.
    * <p>
