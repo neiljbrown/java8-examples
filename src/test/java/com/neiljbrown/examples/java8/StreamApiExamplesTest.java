@@ -15,6 +15,9 @@
  */
 package com.neiljbrown.examples.java8;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -33,17 +36,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalInt;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -481,16 +476,15 @@ public class StreamApiExamplesTest {
 
   /**
    * An example of how to use a {@link Collector} which groups (aggregates) elements in a stream by a specified
-   * criteria.
+   * criteria. Uses {@link Collectors#groupingBy(Function)} to create a group-by operation which uses a single
+   * function.
    * <p>
    * The {@link Collectors} class provides factory methods for creating implementations of {@link Collector}. These
    * classes provide reduction operations, such as accumulating elements into collections, summarizing elements
    * according to various criteria, etc.
-   * 
-   * @throws Exception If an unexpected error occurs.
    */
   @Test
-  public void testCollectGroupingBy() throws Exception {
+  public void testCollectGroupingBy() {
     // Create a list of students in which more than one has the same date of birth
     final List<Student> students = new ArrayList<>();
     final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
@@ -505,7 +499,7 @@ public class StreamApiExamplesTest {
     //@formatter:off
     Map<LocalDate, List<Student>> studentsGroupByDob = students.stream().collect(
       // Create impl of Collector which reduces the stream by grouping elements by a supplied function  
-      Collectors.groupingBy(Student::getDob)
+      groupingBy(Student::getDob)
     );
     //@formatter:on
 
@@ -517,6 +511,38 @@ public class StreamApiExamplesTest {
   }
 
   /**
+   * An example of creating and using a so-called 'cascading' group-by operation that first groups elements in the
+   * stream by applying a supplied classification function (as shown in example {@link #testCollectGroupingBy()},
+   * then additionally applies a reduction operation on the values using a second supplied Collector. A cascading
+   * group-by operation is created using {@link Collectors#groupingBy(Function, Collector)}.
+   */
+  @Test
+  public void testCollectCascadingGroupByWithSecondaryFunction() {
+    final List<Student> students = new ArrayList<>();
+    final Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net");
+    s1.setCountry("UK");
+    students.add(s1);
+    final Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net");
+    s2.setCountry("Netherlands");
+    students.add(s2);
+    final Student s3 = new Student(s1.getDob(), "jim.bloggs@test.net");
+    s3.setCountry("Sweden");
+    students.add(s3);
+    final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
+    s4.setCountry("UK");
+    students.add(s4);
+
+    // Compute the set of email addresses of students in each country
+    Map<String, Set<String>> emailsByCountry =
+      students.stream().collect(groupingBy(Student::getCountry,mapping(Student::getEmail, toSet())));
+
+    assertThat(emailsByCountry.keySet(), hasSize(3));
+    assertThat(emailsByCountry, hasEntry(is(s1.getCountry()), containsInAnyOrder(s1.getEmail(), s4.getEmail())));
+    assertThat(emailsByCountry, hasEntry(is(s2.getCountry()), contains(s2.getEmail())));
+    assertThat(emailsByCountry, hasEntry(is(s3.getCountry()), contains(s3.getEmail())));
+  }
+
+  /**
    * An example of how to use {@link Collectors#joining} to obtain an implementation of a {@link Collector} that
    * concatenates a stream of strings in the order they're processed
    * <p>
@@ -524,11 +550,9 @@ public class StreamApiExamplesTest {
    * that subsequently need reporting as one. This example uses the overloaded method
    * {@link Collectors#joining(CharSequence)} to add an optional delimiter between the concatenated strings. There are
    * also overloaded methods for adding optional prefixes and suffixes to each string.
-   * 
-   * @throws Exception If an unexpected error occurs.
    */
   @Test
-  public void testCollectJoining() throws Exception {
+  public void testCollectJoining() {
     List<FieldError> fieldErrors = new ArrayList<>();
     FieldError error1 = new FieldError("firstName", "invalid first name");
     fieldErrors.add(error1);
@@ -622,7 +646,7 @@ public class StreamApiExamplesTest {
    * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns
    * a stream of all the lines in a Reader.
    * 
-   * @throws Exception If an unexpected error occurs.
+   * @throws Exception if an unexpected error occurs.
    */
   @Test
   public void testCreateStreamFromBufferedReader() throws Exception {
@@ -697,11 +721,9 @@ public class StreamApiExamplesTest {
    * <p>
    * This example uses the Streams API to find the total of the square root of the first 'n' prime numbers, starting
    * from 'x'.
-   * 
-   * @throws Exception If an unexpected error occurs.
    */
   @Test
-  public void testInfiniteStream() throws Exception {
+  public void testInfiniteStream() {
     final int numberOfPrimesToFind = 5;
     final int startValue = 2;
     final double expectedResult = Math.sqrt(2.0) + Math.sqrt(3.0) + Math.sqrt(5.0) + Math.sqrt(7.0) + Math.sqrt(11.0);
@@ -762,12 +784,13 @@ public class StreamApiExamplesTest {
     private LocalDate graduationDate;
     private final List<ExamResult> examResults;
     private final BigDecimal fee;
+    private String country;
 
-    public Student(LocalDate dob, String email) {
+    Student(LocalDate dob, String email) {
       this(dob, email, STANDARD_FEE);
     }
 
-    public Student(LocalDate dob, String email, BigDecimal fee) {
+    Student(LocalDate dob, String email, BigDecimal fee) {
       this.id = ++Student.lastId;
       this.dob = dob;
       this.email = email;
@@ -775,36 +798,44 @@ public class StreamApiExamplesTest {
       this.fee = fee;
     }
 
-    public final int getId() {
+    final int getId() {
       return this.id;
     }
 
-    public final String getEmail() {
+    final String getEmail() {
       return this.email;
     }
 
-    public final LocalDate getDob() {
+    final LocalDate getDob() {
       return this.dob;
     }
 
-    public final LocalDate getGraduationDate() {
+    final LocalDate getGraduationDate() {
       return graduationDate;
     }
 
-    public final void setGraduationDate(LocalDate graduationDate) {
+    final void setGraduationDate(LocalDate graduationDate) {
       this.graduationDate = graduationDate;
     }
 
-    public void addExamResult(ExamResult examResult) {
+    void addExamResult(ExamResult examResult) {
       this.examResults.add(examResult);
     }
 
-    public final List<ExamResult> getExamResults() {
+    final List<ExamResult> getExamResults() {
       return examResults;
     }
 
-    public final BigDecimal getFee() {
+    final BigDecimal getFee() {
       return this.fee;
+    }
+
+    String getCountry() {
+      return this.country;
+    }
+
+    void setCountry(String country) {
+      this.country = country;
     }
 
     @Override
@@ -841,19 +872,19 @@ public class StreamApiExamplesTest {
     }
 
     // auto-generated
+
+
     @Override
     public String toString() {
-      StringBuilder builder = new StringBuilder();
-      builder.append("Student [id=");
-      builder.append(id);
-      builder.append(", email=");
-      builder.append(email);
-      builder.append(", dob=");
-      builder.append(dob);
-      builder.append(", examResults=");
-      builder.append(examResults);
-      builder.append("]");
-      return builder.toString();
+      return "Student{" +
+        "id=" + id +
+        ", email='" + email + '\'' +
+        ", dob=" + dob +
+        ", graduationDate=" + graduationDate +
+        ", examResults=" + examResults +
+        ", fee=" + fee +
+        ", country='" + country + '\'' +
+        '}';
     }
 
     static class DobComparator implements Comparator<Student> {
