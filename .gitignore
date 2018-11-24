@@ -1,7 +1,12 @@
 .classpath
+.DS_Store
 .gradle
+*.iml
+*.ipr
+*.iws
 .project
 .settings
 bin
 build
+out
 target
