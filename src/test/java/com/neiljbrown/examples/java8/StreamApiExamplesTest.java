@@ -18,10 +18,7 @@ package com.neiljbrown.examples.java8;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toSet;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -40,10 +37,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
+import java.util.stream.*;
 
 import org.junit.Test;
 
@@ -231,7 +225,7 @@ public class StreamApiExamplesTest {
 
   /**
    * Example use of {@link Stream#map(java.util.function.Function)} to 'map' (compute) a stream of elements (sourced
-   * from a collection) of one type to a stream of elements of another type, declaratively, by applying a
+   * from a collection) of one type to a stream of elements of another type, in a declarative way, by applying a
    * {@link java.util.function.Function} to each individual element.
    * <p>
    * The map() function transforms the type in the input stream to another type in the output stream. The no. of values
@@ -666,6 +660,37 @@ public class StreamApiExamplesTest {
     assertThat(readPhrase, is(Arrays.asList(phrase)));
   }
 
+  /**
+   * The {@link Iterable} interface was introduced in Java 5, to support classes declaring themselves as targets of the
+   * then new for-each loop statement. In J8, it is also possible to process an instance of an {@link Iterable} in a
+   * functional manner using the Streams API, but only by creating a {@link Spliterator} over the {@link Iterable},
+   * and using a utility method provided by {@link StreamSupport}.
+   *
+   * <h2>Resources</h2>
+   * https://stackoverflow.com/questions/23932061/convert-iterable-to-stream-using-java-8-jdk/23936723#23936723
+   * <p>
+   * https://www.journaldev.com/13521/java-spliterator
+   *
+   * @see StreamSupport#stream(Spliterator, boolean)
+   */
+  @Test
+  public void testCreateStreamFromIterableViaSpliterator() {
+    final List<String> strings = Arrays.asList("a", "b", "c");
+
+    // Pre J8 code illustrating use of Iterable -- as target of for-each
+    for(String s : strings) {
+      assertThat(strings, hasItem(s));
+    }
+
+    // Simulate an API that is passed an instance of Iterable (java.util.List implements java.lang.Iterable)
+    final Iterable<String> stringsIterable = strings;
+
+    // In J8, it's possible to use functional methods provided by the Stream APIs to process elements of an Iterable,
+    // but you need to convert it to a Spliterator first, and use the StreamSupport utility class to create the stream -
+    final long count = StreamSupport.stream(stringsIterable.spliterator(), false).count();
+    assertThat(count, is(Long.valueOf(strings.size())));
+  }
+
   // ------------------------------------------------------------------------------------------- Other Stream operations
 
   /**
@@ -766,6 +791,42 @@ public class StreamApiExamplesTest {
     return number > 1 &&
         // Functional way to check that a number is only divisible by 1 and itself, and not values in between
         IntStream.range(2, number).noneMatch(i -> number % i == 0);
+  }
+
+  /**
+   * An example of how {@link Stream#concat(Stream, Stream)} can be used to (lazily) combine (concatenate) two or
+   * more Collections, e.g. Lists.
+   * <p>
+   * In J7, you could simply use {@link Collection#addAll(Collection)}, however it is worth noting that this is
+   * slightly less efficient, as the method creates a new collection with additional references to the same objects
+   * that are in the first two collections.
+   * <p>
+   * This example shows combing two Lists. If you need to combine more than two Collections you can nest the
+   * invocations of Stream.concat(), i.e. use the result of Stream.concat(Stream, Stream) as one of the params.
+   * <p>
+   * Alternative solutions for pre-Java 8 include
+   * <p>
+   * - Guava's <a href="https://google.github.io/guava/releases/21.0/api/docs/com/google/common/collect/Iterables.html#concat-java.lang.Iterable-java.lang.Iterable-">Iterabales.concat(Iterable, Iterable)</a>
+   * method, or one of its overloaded variants.
+   * <p>
+   * For more details see https://www.baeldung.com/java-combine-multiple-collections
+   */
+  @Test
+  public void testConcatenateTwoLists() {
+    // (Note - From Java 9+ use Collection static factory method List.of(...) to create immutable lists instead).
+    final List<String> strings1 = Arrays.asList("a", "b", "c");
+    final List<String> strings2 = Arrays.asList("d", "e", "f");
+
+    // Pre J8 (J7) solution -
+    List<String> combinedStrings = new ArrayList<>();
+    combinedStrings.addAll(strings1);
+    combinedStrings.addAll(strings2);
+
+    // J8 solution - More efficient -
+    List<String> moreCombinedStrings =
+      Stream.concat(strings1.stream(), strings2.stream()).collect(Collectors.toList());
+
+    assertThat(moreCombinedStrings, contains("a", "b", "c", "d", "e", "f"));
   }
 
   // Test Fixtures, Supporting Classes
