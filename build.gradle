@@ -62,7 +62,3 @@ task javadocTests(type: Javadoc) {
   classpath = configurations.testCompile  
   options.links(project.ext.javadocLinks)  
 }
-
-task wrapper(type: Wrapper) {
-  gradleVersion = '5.6.4'
-}
