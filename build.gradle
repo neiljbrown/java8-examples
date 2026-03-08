@@ -56,9 +56,10 @@ jar {
 // Tasks
 // *********************************************************************************************************************
 
-// Custom task for running javadoc on Java classes in src/test/java
-task javadocTests(type: Javadoc) {
+tasks.register('javadocTests', Javadoc) {
+  description = "Generates Javadoc API documentation for the test source code."
+  group = "Documentation"
   source = sourceSets.test.allJava
-  classpath = configurations.testCompile  
-  options.links(project.ext.javadocLinks)  
+  classpath = configurations.testCompile
+  options.links(project.ext.javadocLinks)
 }
