@@ -608,6 +608,40 @@ public class StreamApiExamplesTest {
     }
   }
 
+  /**
+   * An example of how to use the out-of-the-box {@link Collector} provided by factory method
+   * {@link Collectors#partitioningBy(Predicate)} to partition the elements of a stream based on a supplied
+   * predicate, and store the resulting two partitioned data-sets in a Map.
+   * <p>
+   * Use this Collector as an alternative to the {@link Stream#filter(Predicate)} operation in cases where you need to
+   * process the rejected elements (those that did not match the predicate / filter) as well the accepted ones.
+   */
+  @Test
+  public void testCollectPartitioningBy() {
+    final List<Student> students = new ArrayList<>();
+    Student s1 = new Student(LocalDate.of(1974, Month.JUNE, 21), "joe.bloggs@test.net", new BigDecimal("950.00"));
+    students.add(s1);
+    Student s2 = new Student(LocalDate.of(1980, Month.JANUARY, 2), "jane.bloggs@test.net", new BigDecimal("509.78"));
+    students.add(s2);
+    Student s3 = new Student(LocalDate.of(1992, Month.MARCH, 8), "jim.bloggs@test.net", new BigDecimal("1080.25"));
+    students.add(s3);
+    Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net", new BigDecimal("649.78"));
+    students.add(s4);
+
+    final BigDecimal premiumFeeThreshold = new BigDecimal("1000.00");
+    Map<Boolean, List<Student>> studentsPartitionedByFee = students.stream()
+      .collect(
+        Collectors.partitioningBy(s -> premiumFeeThreshold.compareTo(s.getFee()) <= 0)
+      );
+
+    List<Student> premiumFeeStudents = studentsPartitionedByFee.get(true);
+    assertThat(premiumFeeStudents, hasSize(1));
+    assertThat(premiumFeeStudents, contains(s3));
+    List<Student> nonPremiumFeeStudents = studentsPartitionedByFee.get(false);
+    assertThat(nonPremiumFeeStudents, hasSize(3));
+    assertThat(nonPremiumFeeStudents, contains(s1, s2, s4));
+  }
+
   // ------------------------------------------------------------------------- Create Streams from data-sources & values
 
   /**
