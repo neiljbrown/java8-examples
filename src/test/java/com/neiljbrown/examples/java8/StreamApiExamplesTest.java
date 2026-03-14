@@ -202,14 +202,17 @@ public class StreamApiExamplesTest {
     oldestTwoStudents.add(secondOldestStudent);
     assertThat(oldestTwoStudents, is(expectedStudents));
 
-    // Pre J8 implementation - Improved solution. Removes need for loop by sorting list first, then generating sublist
+    // Pre Java 8 implementation - Improved solution. Removes need for loop by sorting list first, then generating sublist
     List<Student> studentsSortedByDob = new ArrayList<>(students);
-    studentsSortedByDob.sort(new Comparator<Student>() {
-      @Override
-      public int compare(Student s1, Student s2) {
-        return s1.getDob().compareTo(s2.getDob());
-      }
-    });
+    studentsSortedByDob.sort(
+      // Note - Demonstrating pre Java 8 example, so purposely not using a Lambda expression to implement comparator
+      new Comparator<Student>() {
+        @Override
+        public int compare(Student s1, Student s2) {
+          return s1.getDob().compareTo(s2.getDob());
+        }
+     }
+    );
     oldestTwoStudents = studentsSortedByDob.subList(0, 2);
     assertThat(oldestTwoStudents, is(expectedStudents));
 
@@ -590,9 +593,9 @@ public class StreamApiExamplesTest {
     assertThat(fieldErrorMessages, hasEntry(is(error2.getFieldName()), is(error2.getMessage())));
   }
 
-  class FieldError {
-    private String fieldName;
-    private String message;
+  static class FieldError {
+    private final String fieldName;
+    private final String message;
 
     public FieldError(String fieldName, String message) {
       this.fieldName = fieldName;
@@ -701,9 +704,9 @@ public class StreamApiExamplesTest {
    * and using a utility method provided by {@link StreamSupport}.
    *
    * <h2>Resources</h2>
-   * https://stackoverflow.com/questions/23932061/convert-iterable-to-stream-using-java-8-jdk/23936723#23936723
+   * <a href="https://stackoverflow.com/questions/23932061/convert-iterable-to-stream-using-java-8-jdk/23936723#23936723">Stack Overflow - Convert Iterable to Stream using Java 8 JDK</a>
    * <p>
-   * https://www.journaldev.com/13521/java-spliterator
+   * <a href="https://www.journaldev.com/13521/java-spliterator">Digital Ocean - Java Spliterator</a>
    *
    * @see StreamSupport#stream(Spliterator, boolean)
    */
@@ -722,7 +725,7 @@ public class StreamApiExamplesTest {
     // In J8, it's possible to use functional methods provided by the Stream APIs to process elements of an Iterable,
     // but you need to convert it to a Spliterator first, and use the StreamSupport utility class to create the stream -
     final long count = StreamSupport.stream(stringsIterable.spliterator(), false).count();
-    assertThat(count, is(Long.valueOf(strings.size())));
+    assertThat(count, is((long) strings.size()));
   }
 
   // ------------------------------------------------------------------------------------------- Other Stream operations
@@ -821,7 +824,7 @@ public class StreamApiExamplesTest {
    * @param number The number to be tested.
    * @return true if a supplied number is a prime number - a no. greater than 1, that is divisible only by 1 and itself.
    */
-  private static final boolean isPrime(int number) {
+  private static boolean isPrime(int number) {
     return number > 1 &&
         // Functional way to check that a number is only divisible by 1 and itself, and not values in between
         IntStream.range(2, number).noneMatch(i -> number % i == 0);
@@ -843,7 +846,7 @@ public class StreamApiExamplesTest {
    * - Guava's <a href="https://google.github.io/guava/releases/21.0/api/docs/com/google/common/collect/Iterables.html#concat-java.lang.Iterable-java.lang.Iterable-">Iterabales.concat(Iterable, Iterable)</a>
    * method, or one of its overloaded variants.
    * <p>
-   * For more details see https://www.baeldung.com/java-combine-multiple-collections
+   * For more details see <a href="https://www.baeldung.com/java-combine-multiple-collections">Java – Combine Multiple Collections | Baeldung</a>
    */
   @Test
   public void testConcatenateTwoLists() {
@@ -871,7 +874,7 @@ public class StreamApiExamplesTest {
   static class Student implements Comparable<Student> {
     private static int lastId;
 
-    private static final BigDecimal STANDARD_FEE = new BigDecimal(650.72);
+    private static final BigDecimal STANDARD_FEE = new BigDecimal("650.72");
 
     private final int id;
     private final String email;
@@ -935,7 +938,7 @@ public class StreamApiExamplesTest {
 
     @Override
     public int compareTo(Student s) {
-      return (this.id < s.getId()) ? -1 : (this.id == s.getId()) ? 0 : 1;
+      return Integer.compare(this.id, s.getId());
     }
 
     // auto-generated
@@ -960,10 +963,7 @@ public class StreamApiExamplesTest {
         return false;
       }
       Student other = (Student) obj;
-      if (id != other.id) {
-        return false;
-      }
-      return true;
+      return id == other.id;
     }
 
     // auto-generated
@@ -1011,13 +1011,7 @@ public class StreamApiExamplesTest {
     // auto-generated
     @Override
     public String toString() {
-      StringBuilder builder = new StringBuilder();
-      builder.append("ExamResult [exam=");
-      builder.append(exam);
-      builder.append(", score=");
-      builder.append(score);
-      builder.append("]");
-      return builder.toString();
+      return String.format("ExamResult [exam=%s, score=%s]", this.exam, this.score);
     }
   }
 }
