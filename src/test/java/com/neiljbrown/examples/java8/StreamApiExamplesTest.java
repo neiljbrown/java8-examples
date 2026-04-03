@@ -15,7 +15,6 @@
  */
 package com.neiljbrown.examples.java8;
 
-import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.CoreMatchers.*;
@@ -108,7 +107,7 @@ public class StreamApiExamplesTest {
     final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
     students.add(s4);
 
-    // Filter the list to only contain those born after 1975
+    // Filter the list to only contain those born after a given year.
     int yearOfBirthFilter = 1975;
 
     // Pre J8 applying a filter required writing imperative code with external (in application code) iteration -
@@ -122,8 +121,7 @@ public class StreamApiExamplesTest {
 
     // From J8 onwards, the new Streams API can be used to apply the filter
     filteredStudents = students
-        // Use Collection.stream() to create a java.util.stream.Stream (sequence of elements supporting sequential and
-        // parallel aggregate operations) for operations on this Collection
+        // Use Collection.stream() to create a java.util.stream.Stream for operations on this Collection
         .stream()
         // Use Stream.filter() to filter the List of Students according to a java.util.function.Predicate, the
         // test() method of which is implemented as a Lambda expression
@@ -246,7 +244,7 @@ public class StreamApiExamplesTest {
     final Student s4 = new Student(LocalDate.of(1973, Month.JULY, 12), "nellie.bloggs@test.net");
     students.add(s4);
 
-    // Create a list of all the student's email addresses
+    // Create a list of all the students' email addresses
     // Uses a lambda expression to implement the Function passed to map(), using the method reference "::" syntax
     List<String> studentEmails = students.stream().map(Student::getEmail).collect(Collectors.toList());
 
@@ -254,9 +252,12 @@ public class StreamApiExamplesTest {
   }
 
   /**
-   * Example use of {@link Stream#flatMap(java.util.function.Function)} which has the effect of applying a one-to-many
-   * transformation on the elements of the stream (e.g. by retrieving a non-scalar property), and then flattening the
-   * resulting elements into a new stream.
+   * Example use of {@link Stream#flatMap(java.util.function.Function)} which transforms each element of the stream
+   * into a new stream and then flattens those (child or sub) streams into a single stream. (Hence the Function which
+   * is supplied as am argument to flatMap must return a Stream).
+   * <p>
+   * flatMap is commonly used to process (e.g. extract &amp; aggregate or flatten) collections of collections, or when
+   * the mapping function returns multiple elements for each input.
    */
   @Test
   public void testFlatMap() {
@@ -284,7 +285,8 @@ public class StreamApiExamplesTest {
 
   // ------------------------------------------------------------------------------------------------- Reduce operations
   // Reduction operations concern combining elements from a source to yield a single value, e.g. sum values, max value.
-  // Reduce operations repeatedly apply an operation to each element until a result is produced.
+  // Reduce operations repeatedly apply an operation to each element until a result is produced. They're therefore
+  // terminal Stream operations.
 
   /**
    * Example of how to use the general-purpose {@link Stream#reduce(Object, java.util.function.BinaryOperator)}
@@ -327,7 +329,7 @@ public class StreamApiExamplesTest {
    * Example of how to use the {@link Stream#max(Comparator)} Stream operation to return the 'maximum' element of a
    * stream, according to a supplied Comparator.
    * <p>
-   * The max() operation is a special-case of a reduction operation which is so common that the Streams API provides an
+   * The max() operation is a special-case of a reduction operation which is so common that the Stream API provides an
    * implementation out-of-the-box.
    */
   @Test
@@ -400,7 +402,7 @@ public class StreamApiExamplesTest {
 
     boolean geographyStudentsExist = students.stream()
         .flatMap(student -> student.getExamResults().stream())
-        // Did anybody study sit an exam for this subject?
+        // Did anybody sit an exam for this subject?
         .anyMatch(er -> er.getExam().equalsIgnoreCase("geography"));
     assertThat(geographyStudentsExist, is(false));
   }
@@ -448,13 +450,14 @@ public class StreamApiExamplesTest {
 
     //@formatter:off
     List<Student> studentsSortedById = students.stream()
-        .sorted()
-        .collect(Collectors.toList());
+      .sorted()
+      .collect(Collectors.toList());
     //@formatter:on
     assertThat(studentsSortedById, contains(s1, s2, s3, s4));
 
-    List<Student> studentsSortedByDob = students.stream().sorted(new Student.DobComparator()).collect(
-        Collectors.toList());
+    List<Student> studentsSortedByDob = students.stream()
+      .sorted(new Student.DobComparator())
+      .collect(Collectors.toList());
     assertThat(studentsSortedByDob, contains(s4, s1, s3, s2));
   }
 
@@ -465,7 +468,7 @@ public class StreamApiExamplesTest {
   //
   // Collect operations on a Stream use the java.util.stream.Collector interface to describe how to accumulate the
   // elements. The java.util.stream.Collectors (plural) interface provides factory methods for creating various 
-  // implementations of Collector.
+  // implementations of Collector provided out-of-the-box by the JDK.
   //
   // Collector exist to convert a stream to various types of java.util.Collection. As a result the Stream.collect()
   // methods are commonly used, in conjunction with other functional methods, to replace pre-Java 8 imperative code / 
@@ -496,7 +499,7 @@ public class StreamApiExamplesTest {
     //@formatter:off
     Map<LocalDate, List<Student>> studentsGroupByDob = students.stream().collect(
       // Create impl of Collector which reduces the stream by grouping elements by a supplied function  
-      groupingBy(Student::getDob)
+      Collectors.groupingBy(Student::getDob)
     );
     //@formatter:on
 
@@ -509,7 +512,7 @@ public class StreamApiExamplesTest {
 
   /**
    * An example of creating and using a so-called 'cascading' group-by operation that first groups elements in the
-   * stream by applying a supplied classification function (as shown in example {@link #testCollectGroupingBy()},
+   * stream by applying a supplied classification function (as shown in example {@link #testCollectGroupingBy()}),
    * then additionally applies a reduction operation on the values using a second supplied Collector. A cascading
    * group-by operation is created using {@link Collectors#groupingBy(Function, Collector)}.
    */
@@ -530,8 +533,9 @@ public class StreamApiExamplesTest {
     students.add(s4);
 
     // Compute the set of email addresses of students in each country
-    Map<String, Set<String>> emailsByCountry =
-      students.stream().collect(groupingBy(Student::getCountry,mapping(Student::getEmail, toSet())));
+    Map<String, Set<String>> emailsByCountry = students.stream().collect(
+      Collectors.groupingBy(Student::getCountry, mapping(Student::getEmail, toSet()))
+    );
 
     assertThat(emailsByCountry.keySet(), hasSize(3));
     assertThat(emailsByCountry, hasEntry(is(s1.getCountry()), containsInAnyOrder(s1.getEmail(), s4.getEmail())));
@@ -541,7 +545,7 @@ public class StreamApiExamplesTest {
 
   /**
    * An example of how to use {@link Collectors#joining} to obtain an implementation of a {@link Collector} that
-   * concatenates a stream of strings in the order they're processed
+   * concatenates a stream of strings in the order they're processed.
    * <p>
    * This collection operation is useful when converting (mapping) an input stream of objects to a stream of strings
    * that subsequently need reporting as one. This example uses the overloaded method
@@ -557,7 +561,7 @@ public class StreamApiExamplesTest {
     fieldErrors.add(error2);
 
     String errorMessages = fieldErrors.stream()
-        .map((fieldError) -> "Field [" + fieldError.getFieldName() + "] " + fieldError.getMessage())
+        .map((fieldError) -> String.format("Field [%s] - %s", fieldError.getFieldName(), fieldError.getMessage()) )
         // Create impl of Collector which reduces the stream by concatenating its elements, separated by delimiter
         .collect(Collectors.joining(System.lineSeparator()));
 
@@ -567,9 +571,8 @@ public class StreamApiExamplesTest {
   }
 
   /**
-   * An example of how to use
-   * {@link Collectors#toConcurrentMap(java.util.function.Function, java.util.function.Function)} to convert an input
-   * Map to another type of Map.
+   * An example of how to convert an input Map to another type of Map using
+   * {@link Collectors#toConcurrentMap(java.util.function.Function, java.util.function.Function)}.
    */
   @Test
   public void testCollectConvertAMap() {
@@ -585,8 +588,9 @@ public class StreamApiExamplesTest {
         .filter(entry -> entry.getValue() != null)
         // Use Collectors.toConcurrentMap() to convert the stream's map entry key and value to a new type and
         // aggregate the new map entries into a new Map
-        .collect(Collectors.toConcurrentMap(entry -> entry.getKey(),
-            entry -> entry.getValue().getMessage()));
+        .collect(
+          Collectors.toConcurrentMap(entry -> entry.getKey(), entry -> entry.getValue().getMessage())
+        );
 
     assertThat(fieldErrorMessages.keySet(), hasSize(2));
     assertThat(fieldErrorMessages, hasEntry(is(error1.getFieldName()), is(error1.getMessage())));
@@ -613,11 +617,11 @@ public class StreamApiExamplesTest {
 
   /**
    * An example of how to use the out-of-the-box {@link Collector} provided by factory method
-   * {@link Collectors#partitioningBy(Predicate)} to partition the elements of a stream based on a supplied
-   * predicate, and store the resulting two partitioned data-sets in a Map.
+   * {@link Collectors#partitioningBy(Predicate)} to partition the elements of a stream based on a supplied predicate,
+   * and store the resulting two partitioned data-sets in a Map.
    * <p>
    * Use this Collector as an alternative to the {@link Stream#filter(Predicate)} operation in cases where you need to
-   * process the rejected elements (those that did not match the predicate / filter) as well the accepted ones.
+   * process the rejected elements (those that did not match the filter) as well the accepted ones.
    */
   @Test
   public void testCollectPartitioningBy() {
@@ -676,7 +680,7 @@ public class StreamApiExamplesTest {
   /**
    * Collections are not the only thing that can be used as the source of streams. {@link BufferedReader#lines} returns
    * a stream of all the lines in a Reader.
-   * 
+   *
    * @throws Exception if an unexpected error occurs.
    */
   @Test
@@ -700,11 +704,13 @@ public class StreamApiExamplesTest {
   /**
    * The {@link Iterable} interface was introduced in Java 5, to support classes declaring themselves as targets of the
    * then new for-each loop statement. In J8, it is also possible to process an instance of an {@link Iterable} in a
-   * functional manner using the Streams API, but only by creating a {@link Spliterator} over the {@link Iterable},
-   * and using a utility method provided by {@link StreamSupport}.
+   * functional manner using the Streams API, but only by creating a {@link Spliterator} over the {@link Iterable}, and
+   * using a utility method provided by {@link StreamSupport}.
    *
    * <h2>Resources</h2>
-   * <a href="https://stackoverflow.com/questions/23932061/convert-iterable-to-stream-using-java-8-jdk/23936723#23936723">Stack Overflow - Convert Iterable to Stream using Java 8 JDK</a>
+   * <a
+   * href="https://stackoverflow.com/questions/23932061/convert-iterable-to-stream-using-java-8-jdk/23936723#23936723">Stack
+   * Overflow - Convert Iterable to Stream using Java 8 JDK</a>
    * <p>
    * <a href="https://www.journaldev.com/13521/java-spliterator">Digital Ocean - Java Spliterator</a>
    *
@@ -715,17 +721,19 @@ public class StreamApiExamplesTest {
     final List<String> strings = Arrays.asList("a", "b", "c");
 
     // Pre J8 code illustrating use of Iterable -- as target of for-each
+    String concatStrings = "";
     for(String s : strings) {
-      assertThat(strings, hasItem(s));
+      concatStrings = concatStrings.concat(s);
     }
+    assertThat(concatStrings, is("abc"));
 
-    // Simulate an API that is passed an instance of Iterable (java.util.List implements java.lang.Iterable)
+    // Use an instance of a java.util.List to provide an example of a java.lang.Iterable
     final Iterable<String> stringsIterable = strings;
 
-    // In J8, it's possible to use functional methods provided by the Stream APIs to process elements of an Iterable,
+    // In J8, it's possible to use functional methods provided by the Stream API to process elements of an Iterable,
     // but you need to convert it to a Spliterator first, and use the StreamSupport utility class to create the stream -
-    final long count = StreamSupport.stream(stringsIterable.spliterator(), false).count();
-    assertThat(count, is((long) strings.size()));
+    concatStrings = StreamSupport.stream(stringsIterable.spliterator(), false).collect(Collectors.joining());
+    assertThat(concatStrings, is("abc"));
   }
 
   // ------------------------------------------------------------------------------------------- Other Stream operations
@@ -736,7 +744,7 @@ public class StreamApiExamplesTest {
    * In this example the highest score that any student was awarded for a particular subject in a particular graduation
    * year is determined declaratively by chaining operations on a Collection's stream.
    * <p>
-   * Also illustrates the use of one of the classes of {@link Stream} used for primitive elements -
+   * Also demonstrates the use of one of the classes of {@link Stream} used for primitive elements -
    * {@link java.util.stream.IntStream}, and the terminal reduction stream function
    * {@link java.util.stream.IntStream#max}.
    */
@@ -779,10 +787,10 @@ public class StreamApiExamplesTest {
   }
 
   /**
-   * An example of how to process a stream that has no bounds, a so-called 'infinite' stream.
+   * An example of how to create and limit the processing of a stream that has no bounds, a so-called 'infinite' stream
+   * using a combination of [@link {@link Stream#iterate} and {@link Stream#limit(long)}.
    * <p>
-   * This example uses the Streams API to find the total of the square root of the first 'n' prime numbers, starting
-   * from 'x'.
+   * This example uses the Stream API to calculate the sum of the square root of the first 'n' prime numbers.
    */
   @Test
   public void testInfiniteStream() {
@@ -805,12 +813,12 @@ public class StreamApiExamplesTest {
     assertThat(total, is(expectedResult));
 
     // The functional way -
-    // Create an infinite stream (one with no bounds) of integers. This example starts at 1 and increments by 1.
+    // Create an infinite stream (one with no bounds) of integers. This example starts at 2 and increments by 1.
     total = Stream.iterate(startValue, e -> e + 1)
         // Filter the stream to create an infinite stream of prime numbers
         .filter(i -> isPrime(i))
-        // Uncomment this line to debug the found primes
-        // .peek(i -> System.out.println(i))
+        // Uncomment the next line to debug the found primes
+        //.peek(i -> System.out.println(i))
         // Only process the first ‘n’ prime numbers from the stream
         .limit(numberOfPrimesToFind)
         // Convert the stream of prime numbers to their square roots
@@ -860,8 +868,7 @@ public class StreamApiExamplesTest {
     combinedStrings.addAll(strings2);
 
     // J8 solution - More efficient -
-    List<String> moreCombinedStrings =
-      Stream.concat(strings1.stream(), strings2.stream()).collect(Collectors.toList());
+    List<String> moreCombinedStrings = Stream.concat(strings1.stream(), strings2.stream()).collect(Collectors.toList());
 
     assertThat(moreCombinedStrings, contains("a", "b", "c", "d", "e", "f"));
   }
